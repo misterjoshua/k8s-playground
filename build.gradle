@@ -1,3 +1,5 @@
+import com.sun.xml.internal.ws.util.StringUtils
+
 buildscript {
     ext.kotlin_version = "1.3.11"
     ext.k8s_client_version = "3.0.0"
@@ -8,31 +10,44 @@ buildscript {
 
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.apache.commons:commons-lang3:3.8.1"
     }
 }
 
+apply plugin: "kotlin"
+apply plugin: "java"
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    compile "io.kubernetes:client-java:$k8s_client_version"
+}
+
+sourceSets {
+    main.kotlin.srcDirs += "src"
+}
 
 
-subprojects {
-    apply plugin: "kotlin"
-    apply plugin: "java"
+task run
+// Add run tasks for each experiment and add the task as a dependency to
+// the top-level run task.
+// i.e., runX001pod from x001pod experiment and add runX001pod to run
+// dependencies.
 
-    repositories {
-        mavenCentral()
-    }
+files { file("./src/experiments").listFiles() }.each {
+    File it ->
+    String nameTitled = StringUtils.capitalize it.name
+    String taskName = "run$nameTitled"
+    String nsName = it.name
 
-    dependencies {
-        compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-        compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-        compile "io.kubernetes:client-java:$k8s_client_version"
-    }
-
-    sourceSets {
-        main.kotlin.srcDirs += "./"
-    }
-
-    task run(type: JavaExec) {
-        main = "example.${project.name}.RunKt"
+    task "${taskName}" (type: JavaExec) {
+        main = "experiments.${nsName}.RunKt"
         classpath = sourceSets.main.runtimeClasspath
     }
+
+    run.dependsOn taskName
 }
